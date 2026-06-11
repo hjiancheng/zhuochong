@@ -10,6 +10,8 @@ logs/
 
 # === 构建产物（保留 exe 供用户直接使用） ===
 dist/
+build/
+*.spec
 
 # === Python ===
 __pycache__/
