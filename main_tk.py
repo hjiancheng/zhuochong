@@ -333,6 +333,10 @@ class DesktopPet:
         sp = SPECIES.get(self.species, SPECIES["cat"])
         self.colors = sp["palettes"].get(self.fur, sp["palettes"][list(sp["palettes"].keys())[0]])
         self._eye_rgb = {"gold":"#F5C842","blue":"#60B8F8","green":"#6CD888","odd":None}
+        # 嘉怡姐定制：加载图片精灵
+        self._jia_img = None
+        if self.species == "custom_jia":
+            self._load_jia_image()
 
         # ── 逻辑系统 ──
         self.db = Database(DATA_DIR)
@@ -1909,129 +1913,80 @@ class DesktopPet:
         self._tri(tx, ty, tx - int(6 * s), ty - int(10 * s), tx + int(6 * s), ty - int(10 * s),
                   self.colors["stripe"], self.colors["stripe"], 0)
 
-    # ══════════ 嘉怡姐定制 Q版人物 ══════════
+    # ══════════ 嘉怡姐定制 Q版人物 (图片精灵) ══════════
+    def _load_jia_image(self):
+        """加载嘉怡姐定制PNG图片"""
+        paths = [
+            os.path.join(PRESETS_DIR, "custom_jia.png"),
+            os.path.join(BASE_DIR, "定制形象", "wangjunkai-q.png"),
+        ]
+        for p in paths:
+            if os.path.exists(p):
+                try:
+                    from PIL import Image, ImageTk
+                    pil_img = Image.open(p)
+                    # 按画布大小缩放
+                    target_w = int(self.size * 1.2)
+                    scale = target_w / max(pil_img.width, pil_img.height)
+                    new_w = int(pil_img.width * scale)
+                    new_h = int(pil_img.height * scale)
+                    pil_img = pil_img.resize((new_w, new_h), Image.LANCZOS)
+                    self._jia_img = ImageTk.PhotoImage(pil_img)
+                    log(f"嘉怡姐定制图片已加载: {p} ({new_w}x{new_h})")
+                    return
+                except ImportError:
+                    # 无 PIL，用 tkinter 原生加载
+                    self._jia_img = tk.PhotoImage(file=p)
+                    # 缩放
+                    target_w = int(self.size * 1.2)
+                    scale = target_w / max(self._jia_img.width(), self._jia_img.height())
+                    self._jia_img = self._jia_img.subsample(
+                        max(1, int(1 / scale)), max(1, int(1 / scale)))
+                    log(f"嘉怡姐定制图片已加载(tk): {p}")
+                    return
+                except Exception as e:
+                    log(f"加载嘉怡姐图片失败({p}): {e}")
+        log("嘉怡姐定制图片未找到，使用几何绘制")
+
     def _draw_custom_jia(self, cx, cy):
-        """嘉怡姐定制 Q版桌宠 — 大头小身 1:2.5 比例"""
-        s = 1.0
-        bob = int(2 * math.sin(self.frame * math.pi / 4))
+        """嘉怡姐定制 — 使用原版PNG图片精灵"""
+        if not hasattr(self, '_jia_img') or self._jia_img is None:
+            return
 
-        # ── 配色 ──
-        skin = "#FDECD4"
-        hair_c = "#1A1A1A"
-        hat_c = "#E8B730"
-        hoodie_c = "#6B7B3A"
-        pants_c = "#2C3E6B"
-        shoe_c = "#F8F8F8"
-        blush_c = "#FFB5A7"
-        lip_c = "#EEAABB"
-        outline = "#1A1A1A"
+        # 动画效果
+        bob = int(3 * math.sin(self.frame * math.pi / 6))  # 轻柔上下浮动
+        tilt = 0
+        if self._curious_tilt != 0:
+            tilt = self._curious_tilt * 0.3  # 歪头
 
-        # ── 身体 (坐姿，橄榄绿卫衣 + 深蓝裤子) ──
-        body_w, body_h = int(24 * s), int(30 * s)
-        body_y = cy + int(38 * s)
-        # 裤子
-        pants_h = int(14 * s)
-        self._oval(cx - body_w, body_y + int(2 * s), cx + body_w, body_y + body_h, pants_c, outline, 2)
-        # 卫衣
-        hoodie_h = int(20 * s)
-        self._oval(cx - body_w - int(2 * s), body_y - hoodie_h + int(8 * s), cx + body_w + int(2 * s),
-                   body_y + int(6 * s), hoodie_c, outline, 2)
-        # 卫衣口袋
-        pw = int(10 * s)
-        self._oval(cx - pw, body_y - int(2 * s), cx + pw, body_y + int(3 * s), hoodie_c, outline, 1)
+        # 缩放 (开心时略微放大)
+        sc = 1.0
+        if self.anim_state == "bouncy" or self.anim_state == "happy":
+            sc = 1.0 + 0.03 * math.sin(self.frame * math.pi / 3)
 
-        # ── 手臂 (卫衣袖子) ──
-        for side in [-1, 1]:
-            ax = cx + side * int(body_w * 0.7)
-            ay = body_y - int(6 * s)
-            aw, ah = int(8 * s), int(14 * s)
-            self._oval(ax - aw, ay, ax + aw, ay + ah, hoodie_c, outline, 2)
-            # 手 (肤色)
-            hx = ax + side * int(3 * s)
-            hy = ay + ah - int(3 * s)
-            self._oval(hx - int(5 * s), hy, hx + int(5 * s), hy + int(8 * s), skin, outline, 1)
+        # 计算图片位置
+        img_w = self._jia_img.width()
+        img_h = self._jia_img.height()
+        # 按画布比例缩放
+        target_w = int(self.size * 1.2)
+        scale_factor = target_w / max(img_w, img_h)
+        draw_w = int(img_w * scale_factor * sc)
+        draw_h = int(img_h * scale_factor * sc)
 
-        # ── 鞋子 ──
-        for side in [-1, 1]:
-            sx = cx + side * int(12 * s)
-            sy = body_y + body_h - int(8 * s)
-            self._oval(sx - int(8 * s), sy, sx + int(8 * s), sy + int(6 * s), shoe_c, outline, 2)
+        x = cx + bob
+        y = cy + int(10)
 
-        # ── 头部 (Q版大头) ──
-        hr = int(48 * s)
-        head_x = cx - int(4 * s)
-        head_y = cy + int(8 * s) + bob
-        # 脸部
-        self._oval(head_x - hr, head_y - hr, head_x + hr, head_y + hr, skin, outline, 2)
+        # 用 PIL 做旋转 (如果需要歪头)
+        if abs(tilt) > 1:
+            try:
+                from PIL import Image, ImageTk
+                pil_img = Image.open(os.path.join(PRESETS_DIR, "custom_jia.png"))
+                rotated = pil_img.rotate(tilt, expand=True, resample=Image.BICUBIC)
+                self._jia_img = ImageTk.PhotoImage(rotated.resize((draw_w, draw_h), Image.LANCZOS))
+            except:
+                pass
 
-        # ── 头发 (刘海) ──
-        # 主体头发覆盖头顶
-        hair_top = head_y - hr + int(2 * s)
-        for i in range(5):
-            hx_off = (i - 2) * int(14 * s)
-            self._oval(head_x + hx_off - int(18 * s), hair_top - int(4 * s),
-                       head_x + hx_off + int(18 * s), hair_top + int(12 * s), hair_c, outline, 1)
-        # 两侧碎发
-        for side in [-1, 1]:
-            self._oval(head_x + side * int(hr * 0.7), head_y - int(hr * 0.5),
-                       head_x + side * int(hr * 0.95), head_y - int(hr * 0.2),
-                       hair_c, hair_c, 0)
-
-        # ── 帽子 (芥末黄针织帽) ──
-        hat_w = int(46 * s)
-        hat_y = head_y - hr + int(6 * s)
-        # 帽身
-        self._oval(head_x - hat_w, hat_y - int(10 * s), head_x + hat_w, hat_y + int(16 * s), hat_c, outline, 2)
-        # 帽顶尖
-        self._tri(head_x - int(6 * s), hat_y - int(14 * s), head_x + int(6 * s), hat_y - int(14 * s),
-                  head_x, hat_y - int(26 * s), hat_c, outline, 2)
-        # 帽檐条纹
-        for i in range(3):
-            ly = hat_y + int(8 * s) + i * int(4 * s)
-            self._line(head_x - hat_w + int(4 * s), ly, head_x + hat_w - int(4 * s), ly,
-                       "#D4A62C", 1)
-
-        # ── 五官 ──
-        eye_y = head_y - int(2 * s)
-        eye_spacing = int(18 * s)
-        # 眼睛 (夸张大眼 + 双高光)
-        for side in [-1, 1]:
-            ex = head_x + side * eye_spacing
-            ew, eh = int(14 * s), int(16 * s)
-            # 眼白
-            self._oval(ex - ew, eye_y - eh, ex + ew, eye_y + eh, "#FFFFFF", outline, 2)
-            # 瞳孔
-            self._oval(ex - int(8 * s), eye_y - int(6 * s), ex + int(8 * s), eye_y + int(8 * s), "#1A1A2E", "", 0)
-            # 大高光 (左上)
-            self._oval(ex - int(5 * s), eye_y - int(8 * s), ex + int(2 * s), eye_y - int(2 * s), "#FFFFFF", "", 0)
-            # 小高光 (右下)
-            self._oval(ex + int(3 * s), eye_y + int(2 * s), ex + int(6 * s), eye_y + int(5 * s), "#FFFFFF", "", 0)
-            # 上眼睑
-            self._line(ex - ew, eye_y - eh + int(2 * s), ex + ew, eye_y - eh + int(2 * s), outline, 2)
-            # 下睫毛 (小点)
-            for d in range(5):
-                lx = ex - int(8 * s) + d * int(4 * s)
-                ly = eye_y + eh - int(3 * s)
-                self._oval(lx - 1, ly, lx + 1, ly + int(2 * s), outline, "", 0)
-            # 眉毛
-            self._line(ex - int(6 * s), eye_y - eh - int(2 * s), ex + int(6 * s), eye_y - eh - int(4 * s), outline, 1)
-
-        # 鼻子
-        nx = head_x
-        ny = head_y + int(4 * s)
-        self._oval(nx - int(2 * s), ny, nx + int(2 * s), ny + int(3 * s), "#F0C8B8", outline, 1)
-
-        # O 型嘴
-        mx = head_x
-        my = head_y + int(12 * s)
-        self._oval(mx - int(5 * s), my, mx + int(5 * s), my + int(8 * s), lip_c, outline, 2)
-        self._oval(mx - int(3 * s), my + int(2 * s), mx + int(3 * s), my + int(6 * s), "#E05555", "", 0)
-
-        # 腮红
-        for side in [-1, 1]:
-            bx = head_x + side * int(hr * 0.5)
-            by = head_y + int(6 * s)
-            self._oval(bx - int(10 * s), by - int(4 * s), bx + int(10 * s), by + int(6 * s), blush_c, "", 0)
+        self.canvas.create_image(x, y, image=self._jia_img, anchor=tk.CENTER, tags="cat")
 
     def _draw_accessory(self,ax,ay,s):
         if self.acc=="bowtie":
