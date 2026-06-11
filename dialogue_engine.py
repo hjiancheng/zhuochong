@@ -8,7 +8,7 @@ import os
 
 
 class DialogueEngine:
-    """组合式对话生成——不依赖API"""
+    """组合式对话生成——不依赖API，支持10万+ mega库"""
 
     def __init__(self, presets_dir="presets"):
         self.presets_dir = presets_dir
@@ -16,9 +16,12 @@ class DialogueEngine:
         self.fragments = {}
         self.identities = {}
         self.quirks = {}
+        self.mega = {}          # 10万+ mega 库
+        self._mega_index = {}   # 快速索引: (species, style) → [keys]
         self._recent_hashes = []  # 最近20条已说台词
         self._load_presets()
-        logger.info(f"对话引擎初始化: {len(self.templates)}场景模板")
+        mega_count = sum(len(v) for v in self.mega.values())
+        logger.info(f"对话引擎初始化: {len(self.templates)}场景模板 + mega库{mega_count}条")
 
     def _load_presets(self):
         """加载所有预设"""
@@ -27,6 +30,20 @@ class DialogueEngine:
         if os.path.exists(dialogues_path):
             with open(dialogues_path, "r", encoding="utf-8") as f:
                 self.templates = json.load(f)
+
+        # 加载 mega 库（10万+ 按物种+话风索引的对话）
+        mega_path = os.path.join(self.presets_dir, "dialogues_mega.json")
+        if os.path.exists(mega_path):
+            with open(mega_path, "r", encoding="utf-8") as f:
+                self.mega = json.load(f)
+            # 构建快速索引
+            for key in self.mega:
+                parts = key.split("|", 2)
+                if len(parts) >= 2:
+                    idx = (parts[0], parts[1])  # (species, talk_style)
+                    if idx not in self._mega_index:
+                        self._mega_index[idx] = []
+                    self._mega_index[idx].append(key)
 
         # 加载变量片段
         fragments_path = os.path.join(self.presets_dir, "fragments.json")
@@ -46,8 +63,27 @@ class DialogueEngine:
             with open(quirk_path, "r", encoding="utf-8") as f:
                 self.quirks = json.load(f)
 
+    def get_mega_line(self, species, talk_style, topic_hint=None):
+        """从 mega 库中随机取一条匹配的对话"""
+        idx = (species, talk_style)
+        keys = self._mega_index.get(idx, [])
+        if not keys:
+            # 回退到猫+喵系
+            keys = self._mega_index.get(("cat", "喵系"), [])
+        if not keys:
+            return None
+        # 如果提供了话题提示，优先选匹配的 key
+        if topic_hint:
+            matching = [k for k in keys if topic_hint in k]
+            if matching:
+                key = random.choice(matching)
+                return random.choice(self.mega[key])
+        key = random.choice(keys)
+        return random.choice(self.mega[key])
+
     def generate(self, trigger: str, personality, emotion, time_ctx: dict,
-                 user_profile=None, growth=None, memory=None) -> str | None:
+                 user_profile=None, growth=None, memory=None,
+                 species="cat", talk_style="喵系") -> str | None:
         """
         核心方法：根据触发场景生成一句台词
         返回 None 表示本轮不说话（沉默权）
@@ -57,7 +93,23 @@ class DialogueEngine:
         if random.random() < silence_chance and trigger not in ("milestone", "hatch", "birthday"):
             return None
 
-        # 获取该场景的模板
+        # 优先从 mega 库取（有 50% 概率直接用 mega，丰富多样性）
+        if self.mega and random.random() < 0.5:
+            # 用 trigger 作为话题提示
+            topic_map = {
+                "chase_mouse": "玩耍", "sleep_talk": "睡觉", "owner_typing": "工作",
+                "wander_talk": "散步", "click_reaction": "被摸", "idle_talk": "闲聊",
+                "morning_greeting": "早晨", "late_night": "深夜", "monday_blues": "周一",
+                "friday_joy": "周五", "care_cat": "关心", "user_hungry": "吃饭",
+                "user_sad": "难过", "user_angry": "生气", "user_tired": "累了",
+            }
+            topic_hint = topic_map.get(trigger, trigger.replace("_", ""))
+            line = self.get_mega_line(species, talk_style, topic_hint)
+            if line:
+                text = self._fill_template(line, personality, emotion, time_ctx, user_profile, growth)
+                return text
+
+        # 回退到传统模板
         scene_templates = self.templates.get(trigger, [])
         if not scene_templates:
             scene_templates = self.templates.get("idle_talk", [])
@@ -174,7 +226,8 @@ class DialogueEngine:
         return random.choice(fallbacks)
 
     def get_dialogue_for_state(self, state: str, personality, emotion,
-                               time_ctx: dict, user_profile=None, growth=None) -> str | None:
+                               time_ctx: dict, user_profile=None, growth=None,
+                               species="cat", talk_style="喵系") -> str | None:
         """根据行为状态返回对应台词"""
         trigger_map = {
             "chase": "chase_mouse",
@@ -199,4 +252,5 @@ class DialogueEngine:
             elif dow == 4 and hour >= 16 and random.random() < 0.08:
                 trigger = "friday_joy"
 
-        return self.generate(trigger, personality, emotion, time_ctx, user_profile, growth)
+        return self.generate(trigger, personality, emotion, time_ctx, user_profile, growth,
+                           species=species, talk_style=talk_style)

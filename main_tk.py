@@ -787,7 +787,8 @@ class DesktopPet:
                 self._say(random.choice(TALK["late"]),4000); self._talk_cd=60
             if random.random()<0.04*self.personality.get("talk_frequency",1) and self._talk_cd==0:
                 ctx = {"hour":hour,"day_of_week":now.weekday()}
-                txt = self.dialogue.get_dialogue_for_state(self.anim_state,self.personality,self.emotion,ctx,growth=self.growth)
+                style = getattr(self.personality, 'talk_style', '喵系')
+                txt = self.dialogue.get_dialogue_for_state(self.anim_state,self.personality,self.emotion,ctx,growth=self.growth,species=self.species,talk_style=style)
                 if txt:
                     self._say(txt,3500); self._talk_cd=20
                     self.memory.add_conversation("pet",txt)
@@ -1365,7 +1366,8 @@ class DesktopPet:
                     if k in msg: reply = random.choice(vs).replace("{name}",self.pet_name).replace("{cat_age}",str(self.growth.cat_years)); break
                 if not reply:
                     ctx = {"hour":datetime.now().hour,"day_of_week":datetime.now().weekday()}
-                    reply = self.dialogue.generate("owner_typing",self.personality,self.emotion,ctx,growth=self.growth,memory=self.memory)
+                    style = getattr(self.personality, 'talk_style', '喵系')
+                    reply = self.dialogue.generate("owner_typing",self.personality,self.emotion,ctx,growth=self.growth,memory=self.memory,species=self.species,talk_style=style)
                 if not reply:
                     reply = random.choice([
                         "嗯嗯我知道了~","原来如此！","喵~虽然不太懂但陪着你",
