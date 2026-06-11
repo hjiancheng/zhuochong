@@ -27,7 +27,7 @@ def log(msg):
         f.write(f"{datetime.now().strftime('%m-%d %H:%M:%S')} {msg}\n")
 log("─── 启动 ───")
 
-from pet_profile import PetProfile
+from pet_profile import PetProfile, SPECIES_FUR_NAMES, SPECIES_NAMES
 from archive import ArchiveGuard
 from personality import PersonalitySystem
 from emotion import EmotionEngine
@@ -105,7 +105,7 @@ SPECIES = {
             "honey":   {"body":"#D8A860","stripe":"#B08040","belly":"#F0D8B0","ear_in":"#E8C890","cheek":"#F0D0A8"},
             "red":     {"body":"#D87860","stripe":"#B05040","belly":"#F0C0B0","ear_in":"#E89880","cheek":"#F0B0A0"},
         },
-        "body_ratio": {"body_w":34,"body_h":26,"head_r":44,"head_y_off":0},
+        "body_ratio": {"body_w":34,"body_h":28,"head_r":44,"head_y_off":-2},
         "ear":"round","tail":"tiny_ball","face_extras":[],
         "sound":"嗷","identity_tag":"熊",
     },
@@ -147,7 +147,7 @@ SPECIES = {
             "golden":  {"body":"#E8B870","stripe":"#C89848","belly":"#FFF0D8","ear_in":"#F0D0A0","cheek":"#F8D8B0"},
             "coral":   {"body":"#F09080","stripe":"#D87060","belly":"#FFE8E0","ear_in":"#F8C0B8","cheek":"#F8D0C8"},
         },
-        "body_ratio": {"body_w":26,"body_h":18,"head_r":40,"head_y_off":10},
+        "body_ratio": {"body_w":28,"body_h":22,"head_r":42,"head_y_off":8},
         "ear":"big_triangle","tail":"fluffy_big","face_extras":[],
         "sound":"嗷呜","identity_tag":"狐",
     },
@@ -161,7 +161,7 @@ SPECIES = {
             "baby":    {"body":"#585860","stripe":"#404050","belly":"#F8F8F8","ear_in":"#606068","cheek":"#FFE8D8"},
             "pink":    {"body":"#F8D0D8","stripe":"#E8B8C0","belly":"#FFF8FA","ear_in":"#F0C8D0","cheek":"#FFE0E8"},
         },
-        "body_ratio": {"body_w":24,"body_h":30,"head_r":36,"head_y_off":16},
+        "body_ratio": {"body_w":26,"body_h":26,"head_r":38,"head_y_off":14},
         "ear":"none","tail":"short","face_extras":["pointy_beak"],
         "sound":"啾","identity_tag":"鹅",
     },
@@ -457,16 +457,18 @@ class DesktopPet:
         def update_fur_options(*_):
             sp = species_var.get()
             palettes = SPECIES.get(sp, SPECIES["cat"])["palettes"]
+            fur_names = SPECIES_FUR_NAMES.get(sp, {})
             keys = list(palettes.keys())
             fur_var.set(keys[0])
             for widget in fur_frame.winfo_children():
                 widget.destroy()
             fur_labels_dict.clear()
             for i, k in enumerate(keys):
-                label = f"🎨{k}"
+                cn_name = fur_names.get(k, k)
+                label = f"🎨{cn_name}"
                 rb = tk.Radiobutton(fur_frame, text=label, variable=fur_var, value=k,
                                    font=("Microsoft YaHei", 10), bg="#FFF5F8", anchor=tk.W)
-                rb.grid(row=i // 4, column=i % 4, sticky=tk.W, padx=6, pady=2)
+                rb.grid(row=i // 4, column=i % 4, sticky=tk.W, padx=8, pady=3)
                 fur_labels_dict[k] = rb
 
         species_var.trace_add("write", update_fur_options)
@@ -496,16 +498,82 @@ class DesktopPet:
             tk.Radiobutton(acc_frame, text=label, variable=acc_var, value=val,
                           font=("Microsoft YaHei", 10), bg="#FFF5F8").pack(side=tk.LEFT, padx=4)
 
+        # ── 性格选择 ──
+        pers_frame = tk.Frame(dlg, bg="#FFF5F8")
+        pers_frame.pack(pady=(8, 0), fill=tk.X, padx=20)
+
+        tk.Label(pers_frame, text="💬 话风", font=("Microsoft YaHei", 11),
+                bg="#FFF5F8", fg="#886060").pack(anchor=tk.W)
+        talk_var = tk.StringVar(value="喵系")
+        talk_f = tk.Frame(pers_frame, bg="#FFF5F8"); talk_f.pack(pady=2, anchor=tk.W)
+        for v in ["喵系","吐槽系","撒娇系","高冷系"]:
+            tk.Radiobutton(talk_f, text=v, variable=talk_var, value=v,
+                          font=("Microsoft YaHei", 9), bg="#FFF5F8").pack(side=tk.LEFT, padx=4)
+
+        def make_checkbox_group(parent, title, options, default_count=2):
+            """创建一组复选框"""
+            f = tk.LabelFrame(parent, text=title, font=("Microsoft YaHei", 10),
+                             bg="#FFF5F8", fg="#886060", padx=4, pady=2)
+            f.pack(pady=3, fill=tk.X)
+            vars_dict = {}
+            inner = tk.Frame(f, bg="#FFF5F8"); inner.pack()
+            for j, opt in enumerate(options):
+                v = tk.BooleanVar(value=(j < default_count))
+                tk.Checkbutton(inner, text=opt, variable=v,
+                              font=("Microsoft YaHei", 9), bg="#FFF5F8",
+                              selectcolor="#FFD0E0", anchor=tk.W).grid(row=j//3, column=j%3, sticky=tk.W, padx=4)
+                vars_dict[opt] = v
+            return vars_dict
+
+        def update_personality_options(*_):
+            sp = species_var.get()
+            sp_pers = SPECIES_PERSONALITY.get(sp, SPECIES_PERSONALITY["cat"])
+            for widget in pers_frame.winfo_children():
+                if widget not in (pers_frame.winfo_children()[0], talk_f):  # keep title+talk
+                    pass
+            # 清除旧的性格选项
+            for child in list(pers_frame.children.values()):
+                if isinstance(child, tk.LabelFrame):
+                    child.destroy()
+            # 重新创建
+            global _wizard_hobby_vars, _wizard_habit_vars, _wizard_quirk_vars, _wizard_id_vars, _wizard_id_var
+            _wizard_hobby_vars = make_checkbox_group(pers_frame, "❤ 爱好（多选）", sp_pers["hobbies"], 2)
+            _wizard_habit_vars = make_checkbox_group(pers_frame, "🎭 习惯（多选）", sp_pers["habits"], 2)
+            # 身份单选
+            id_f = tk.LabelFrame(pers_frame, text="🏷 身份", font=("Microsoft YaHei", 10),
+                                bg="#FFF5F8", fg="#886060", padx=4, pady=2)
+            id_f.pack(pady=3, fill=tk.X)
+            id_inner = tk.Frame(id_f, bg="#FFF5F8"); id_inner.pack()
+            _wizard_id_var = tk.StringVar(value=sp_pers["identities"][0])
+            _wizard_id_vars = {}
+            for j, opt in enumerate(sp_pers["identities"]):
+                tk.Radiobutton(id_inner, text=opt, variable=_wizard_id_var, value=opt,
+                              font=("Microsoft YaHei", 9), bg="#FFF5F8",
+                              anchor=tk.W).grid(row=j//3, column=j%3, sticky=tk.W, padx=4)
+                _wizard_id_vars[opt] = True
+            _wizard_quirk_vars = make_checkbox_group(pers_frame, "🎲 癖好（多选）", sp_pers["quirks"], 2)
+
+        species_var.trace_add("write", update_personality_options)
+        _wizard_hobby_vars = {}
+        _wizard_habit_vars = {}
+        _wizard_quirk_vars = {}
+        _wizard_id_var = tk.StringVar()
+        _wizard_id_vars = {}
+        update_personality_options()
+
         # 按钮
         btn_frame = tk.Frame(dlg, bg="#FFF5F8")
-        btn_frame.pack(pady=(10, 0))
+        btn_frame.pack(pady=(8, 0))
         tk.Button(btn_frame, text="下次再说", command=dlg.destroy,
                  font=("Microsoft YaHei", 10), bg="#E0E0E0", fg="#666",
                  relief=tk.FLAT, padx=20, pady=6, cursor="hand2").pack(side=tk.LEFT, padx=8)
 
         def confirm():
             sp = species_var.get()
-            sp_pers = SPECIES_PERSONALITY.get(sp, SPECIES_PERSONALITY["cat"])
+            hobbies = [k for k, v in _wizard_hobby_vars.items() if v.get()]
+            habits = [k for k, v in _wizard_habit_vars.items() if v.get()]
+            quirks = [k for k, v in _wizard_quirk_vars.items() if v.get()]
+            identity = _wizard_id_var.get()
             profile = {
                 "name": name_var.get() or "小橘",
                 "birthday": datetime.now().strftime("%m-%d"),
@@ -519,11 +587,11 @@ class DesktopPet:
                     "accessory": acc_var.get(),
                 },
                 "personality": {
-                    "hobbies": random.sample(sp_pers["hobbies"], 2),
-                    "habits": random.sample(sp_pers["habits"], 2),
-                    "talk_style": random.choice(["喵系","吐槽系","撒娇系","高冷系"]),
-                    "identity": random.choice(sp_pers["identities"]),
-                    "quirks": random.sample(sp_pers["quirks"], min(2, len(sp_pers["quirks"]))),
+                    "hobbies": hobbies or ["爱吃","爱聊天"],
+                    "habits": habits or ["黏人","话多"],
+                    "talk_style": talk_var.get(),
+                    "identity": identity,
+                    "quirks": quirks or ["日光族"],
                 }
             }
             self.profile_mgr.create(profile)
@@ -538,7 +606,7 @@ class DesktopPet:
 
         dlg.update_idletasks()
         sw = dlg.winfo_screenwidth(); sh = dlg.winfo_screenheight()
-        dlg.geometry(f"+{(sw - 480) // 2}+{(sh - 560) // 2}")
+        dlg.geometry(f"+{(sw - 500) // 2}+{max(20, (sh - 700) // 2)}")
         self.root.wait_window(dlg)
 
     # ══════════ 成长UI ══════════
@@ -874,8 +942,10 @@ class DesktopPet:
         menu.add_command(label='🔑 API设置' + ('✅' if self._api_configured else ''),command=self._open_api_settings)
         # 换装子菜单
         fur_menu = tk.Menu(menu,tearoff=0,font=("Microsoft YaHei",10))
+        fur_names = SPECIES_FUR_NAMES.get(self.species, {})
         for k in sp["palettes"].keys():
-            fur_menu.add_command(label=f"🎨 {k}", command=lambda f=k: self._ch_fur(f))
+            cn_name = fur_names.get(k, k)
+            fur_menu.add_command(label=f"🎨 {cn_name}", command=lambda f=k: self._ch_fur(f))
         menu.add_cascade(label="🎨换装",menu=fur_menu)
         menu.add_command(label="🎣丢逗猫棒",command=self._throw_toy)
         menu.add_command(label="📓看日记",command=self._show_diary)
