@@ -165,6 +165,15 @@ SPECIES = {
         "ear":"none","tail":"short","face_extras":["pointy_beak"],
         "sound":"啾","identity_tag":"鹅",
     },
+    "custom_jia": {
+        "name":"嘉怡姐定制","emoji":"💛",
+        "palettes": {
+            "default": {"body":"#FDECD4","stripe":"#1A1A1A","belly":"#6B7B3A","ear_in":"#2C3E6B","cheek":"#FFB5A7","hat":"#E8B730"},
+        },
+        "body_ratio": {"body_w":22,"body_h":28,"head_r":44,"head_y_off":-4},
+        "ear":"beanie","tail":"none","face_extras":["human_face","blush"],
+        "sound":"嗨","identity_tag":"定制",
+    },
 }
 
 # 物种性格预设
@@ -208,6 +217,11 @@ SPECIES_PERSONALITY = {
         "hobbies": ["爱玩耍","爱探索","爱聊天"], "habits": ["黏人","话多","活泼"],
         "identities": ["帝企鹅","王企鹅","小蓝企鹅","跳岩企鹅","QQ鹅","绅士鹅"],
         "quirks": ["滑冰","游泳","抱团","学步","跳水","孵蛋","拍肚皮","排队"],
+    },
+    "custom_jia": {
+        "hobbies": ["爱唱歌","爱吃零食","爱发呆"], "habits": ["黏人","话多","温柔"],
+        "identities": ["嘉怡姐定制","小可爱","小仙女","甜心","小棉袄","开心果"],
+        "quirks": ["唱歌达人","零食控","撒娇精","暖心宝","追剧党","赖床怪","臭美","好奇宝宝"],
     },
 }
 # ══════════ 多物种系统 END ══════════
@@ -437,7 +451,8 @@ class DesktopPet:
                 bg="#FFF5F8", fg="#886060").pack()
         species_var = tk.StringVar(value="cat")
         species_list = [("cat","🐱猫"),("dog","🐶狗"),("rabbit","🐰兔"),("bear","🐻熊"),
-                       ("chick","🐤小鸡"),("hamster","🐹仓鼠"),("fox","🦊狐狸"),("penguin","🐧企鹅")]
+                       ("chick","🐤小鸡"),("hamster","🐹仓鼠"),("fox","🦊狐狸"),("penguin","🐧企鹅"),
+                       ("custom_jia","💛(嘉怡姐)定制")]
         sp_frame = tk.Frame(dlg, bg="#FFF5F8")
         sp_frame.pack(pady=4)
         for i, (val, label) in enumerate(species_list):
@@ -1474,6 +1489,14 @@ class DesktopPet:
         self.canvas.delete("cat")
         w,cx,cy = self.size,self.size//2,self.size//2
 
+        # 定制角色：嘉怡姐 Q版
+        if self.species == "custom_jia":
+            self._draw_custom_jia(cx, cy)
+            self.canvas.tag_raise("bubble")
+            self.canvas.tag_raise("thought")
+            self.canvas.tag_raise("heart")
+            return
+
         if self.growth.is_egg:
             self._draw_egg(cx,cy)
         elif self.anim_state=="sleep":
@@ -1885,6 +1908,130 @@ class DesktopPet:
         """极短尾（企鹅等）"""
         self._tri(tx, ty, tx - int(6 * s), ty - int(10 * s), tx + int(6 * s), ty - int(10 * s),
                   self.colors["stripe"], self.colors["stripe"], 0)
+
+    # ══════════ 嘉怡姐定制 Q版人物 ══════════
+    def _draw_custom_jia(self, cx, cy):
+        """嘉怡姐定制 Q版桌宠 — 大头小身 1:2.5 比例"""
+        s = 1.0
+        bob = int(2 * math.sin(self.frame * math.pi / 4))
+
+        # ── 配色 ──
+        skin = "#FDECD4"
+        hair_c = "#1A1A1A"
+        hat_c = "#E8B730"
+        hoodie_c = "#6B7B3A"
+        pants_c = "#2C3E6B"
+        shoe_c = "#F8F8F8"
+        blush_c = "#FFB5A7"
+        lip_c = "#EEAABB"
+        outline = "#1A1A1A"
+
+        # ── 身体 (坐姿，橄榄绿卫衣 + 深蓝裤子) ──
+        body_w, body_h = int(24 * s), int(30 * s)
+        body_y = cy + int(38 * s)
+        # 裤子
+        pants_h = int(14 * s)
+        self._oval(cx - body_w, body_y + int(2 * s), cx + body_w, body_y + body_h, pants_c, outline, 2)
+        # 卫衣
+        hoodie_h = int(20 * s)
+        self._oval(cx - body_w - int(2 * s), body_y - hoodie_h + int(8 * s), cx + body_w + int(2 * s),
+                   body_y + int(6 * s), hoodie_c, outline, 2)
+        # 卫衣口袋
+        pw = int(10 * s)
+        self._oval(cx - pw, body_y - int(2 * s), cx + pw, body_y + int(3 * s), hoodie_c, outline, 1)
+
+        # ── 手臂 (卫衣袖子) ──
+        for side in [-1, 1]:
+            ax = cx + side * int(body_w * 0.7)
+            ay = body_y - int(6 * s)
+            aw, ah = int(8 * s), int(14 * s)
+            self._oval(ax - aw, ay, ax + aw, ay + ah, hoodie_c, outline, 2)
+            # 手 (肤色)
+            hx = ax + side * int(3 * s)
+            hy = ay + ah - int(3 * s)
+            self._oval(hx - int(5 * s), hy, hx + int(5 * s), hy + int(8 * s), skin, outline, 1)
+
+        # ── 鞋子 ──
+        for side in [-1, 1]:
+            sx = cx + side * int(12 * s)
+            sy = body_y + body_h - int(8 * s)
+            self._oval(sx - int(8 * s), sy, sx + int(8 * s), sy + int(6 * s), shoe_c, outline, 2)
+
+        # ── 头部 (Q版大头) ──
+        hr = int(48 * s)
+        head_x = cx - int(4 * s)
+        head_y = cy + int(8 * s) + bob
+        # 脸部
+        self._oval(head_x - hr, head_y - hr, head_x + hr, head_y + hr, skin, outline, 2)
+
+        # ── 头发 (刘海) ──
+        # 主体头发覆盖头顶
+        hair_top = head_y - hr + int(2 * s)
+        for i in range(5):
+            hx_off = (i - 2) * int(14 * s)
+            self._oval(head_x + hx_off - int(18 * s), hair_top - int(4 * s),
+                       head_x + hx_off + int(18 * s), hair_top + int(12 * s), hair_c, outline, 1)
+        # 两侧碎发
+        for side in [-1, 1]:
+            self._oval(head_x + side * int(hr * 0.7), head_y - int(hr * 0.5),
+                       head_x + side * int(hr * 0.95), head_y - int(hr * 0.2),
+                       hair_c, hair_c, 0)
+
+        # ── 帽子 (芥末黄针织帽) ──
+        hat_w = int(46 * s)
+        hat_y = head_y - hr + int(6 * s)
+        # 帽身
+        self._oval(head_x - hat_w, hat_y - int(10 * s), head_x + hat_w, hat_y + int(16 * s), hat_c, outline, 2)
+        # 帽顶尖
+        self._tri(head_x - int(6 * s), hat_y - int(14 * s), head_x + int(6 * s), hat_y - int(14 * s),
+                  head_x, hat_y - int(26 * s), hat_c, outline, 2)
+        # 帽檐条纹
+        for i in range(3):
+            ly = hat_y + int(8 * s) + i * int(4 * s)
+            self._line(head_x - hat_w + int(4 * s), ly, head_x + hat_w - int(4 * s), ly,
+                       "#D4A62C", 1)
+
+        # ── 五官 ──
+        eye_y = head_y - int(2 * s)
+        eye_spacing = int(18 * s)
+        # 眼睛 (夸张大眼 + 双高光)
+        for side in [-1, 1]:
+            ex = head_x + side * eye_spacing
+            ew, eh = int(14 * s), int(16 * s)
+            # 眼白
+            self._oval(ex - ew, eye_y - eh, ex + ew, eye_y + eh, "#FFFFFF", outline, 2)
+            # 瞳孔
+            self._oval(ex - int(8 * s), eye_y - int(6 * s), ex + int(8 * s), eye_y + int(8 * s), "#1A1A2E", "", 0)
+            # 大高光 (左上)
+            self._oval(ex - int(5 * s), eye_y - int(8 * s), ex + int(2 * s), eye_y - int(2 * s), "#FFFFFF", "", 0)
+            # 小高光 (右下)
+            self._oval(ex + int(3 * s), eye_y + int(2 * s), ex + int(6 * s), eye_y + int(5 * s), "#FFFFFF", "", 0)
+            # 上眼睑
+            self._line(ex - ew, eye_y - eh + int(2 * s), ex + ew, eye_y - eh + int(2 * s), outline, 2)
+            # 下睫毛 (小点)
+            for d in range(5):
+                lx = ex - int(8 * s) + d * int(4 * s)
+                ly = eye_y + eh - int(3 * s)
+                self._oval(lx - 1, ly, lx + 1, ly + int(2 * s), outline, "", 0)
+            # 眉毛
+            self._line(ex - int(6 * s), eye_y - eh - int(2 * s), ex + int(6 * s), eye_y - eh - int(4 * s), outline, 1)
+
+        # 鼻子
+        nx = head_x
+        ny = head_y + int(4 * s)
+        self._oval(nx - int(2 * s), ny, nx + int(2 * s), ny + int(3 * s), "#F0C8B8", outline, 1)
+
+        # O 型嘴
+        mx = head_x
+        my = head_y + int(12 * s)
+        self._oval(mx - int(5 * s), my, mx + int(5 * s), my + int(8 * s), lip_c, outline, 2)
+        self._oval(mx - int(3 * s), my + int(2 * s), mx + int(3 * s), my + int(6 * s), "#E05555", "", 0)
+
+        # 腮红
+        for side in [-1, 1]:
+            bx = head_x + side * int(hr * 0.5)
+            by = head_y + int(6 * s)
+            self._oval(bx - int(10 * s), by - int(4 * s), bx + int(10 * s), by + int(6 * s), blush_c, "", 0)
 
     def _draw_accessory(self,ax,ay,s):
         if self.acc=="bowtie":

@@ -29,6 +29,7 @@ DEFAULT_PROFILE = {
 SPECIES_NAMES = {
     "cat": "🐱猫", "dog": "🐶狗", "rabbit": "🐰兔", "bear": "🐻熊",
     "chick": "🐤小鸡", "hamster": "🐹仓鼠", "fox": "🦊狐狸", "penguin": "🐧企鹅",
+    "custom_jia": "💛(嘉怡姐)定制",
 }
 SPECIES_FUR_NAMES = {
     "cat": {"orange":"橘猫","ragdoll":"布偶","cow":"奶牛","calico":"三花","black":"纯黑","white":"纯白","pink":"粉猫","cream":"奶油"},
@@ -39,6 +40,7 @@ SPECIES_FUR_NAMES = {
     "hamster": {"golden":"金丝熊","silver":"银狐","pudding":"布丁","white":"银白","grey":"灰灰","black":"黑黑"},
     "fox": {"red":"赤狐","white":"白狐","grey":"灰狐","black":"黑狐","golden":"金狐","coral":"珊瑚狐"},
     "penguin": {"emperor":"帝企鹅","blue":"蓝企鹅","rock":"岩企鹅","gentoo":"巴布亚","baby":"灰宝宝","pink":"粉企鹅"},
+    "custom_jia": {"default":"(嘉怡姐)定制"},
 }
 
 
