@@ -1430,31 +1430,16 @@ class DesktopPet:
     def _say(self, text, duration=3000):
         self._clear_bubbles()
         w = self.size
-        # 根据画布大小自适应：小画布（蛋）用底部气泡，大画布用顶部气泡
-        if w <= 100:
-            # 蛋形态：画布太小，气泡放底部避免与蛋重叠
-            by = w - 35
-            bh = 20
-            tri_dir = 1   # 三角形朝上（指向上方的蛋）
-            font_size = 8
-        else:
-            # 幼猫及以上：气泡放顶部
-            by = 2
-            bh = 26
-            tri_dir = -1  # 三角形朝下（指向下方的猫）
-            font_size = 9 if w < 180 else 10
-
-        bx = w // 2
-        bw = min(w - 8, max(50, len(text) * 12 + 20))
+        # 气泡置顶，始终在宠物上方不遮挡
+        by = 0  # 紧贴顶部
+        font_size = 8 if w <= 100 else (9 if w < 180 else 10)
+        bw = min(w - 6, max(40, len(text) * 12 + 20))
+        bh = 20 if w <= 100 else 22
+        bx = w // 2  # 水平居中
         bg = self.canvas.create_rectangle(bx - bw // 2, by, bx + bw // 2, by + bh,
               fill="#FFFEF8", outline="#FFB0C0", width=2, tags="bubble")
-        if tri_dir == -1:
-            # 三角形朝下（指向猫）
-            tl = self.canvas.create_polygon(bx - 6, by + bh, bx, by + bh + 8, bx + 6, by + bh,
-              fill="#FFFEF8", outline="#FFB0C0", width=2, tags="bubble")
-        else:
-            # 三角形朝上（指向蛋）
-            tl = self.canvas.create_polygon(bx - 6, by, bx, by - 8, bx + 6, by,
+        # 三角形朝下，极小箭头指向宠物头部
+        tl = self.canvas.create_polygon(bx - 5, by + bh, bx, by + bh + 6, bx + 5, by + bh,
               fill="#FFFEF8", outline="#FFB0C0", width=2, tags="bubble")
         txt_id = self.canvas.create_text(bx, by + bh // 2, text=text, fill="#484048",
               font=("Microsoft YaHei", font_size), width=bw - 8, tags="bubble")
